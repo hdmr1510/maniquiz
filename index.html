@@ -29,7 +29,7 @@
             border-radius: 20px;
             padding: 30px;
             width: 100%;
-            max-width: 500px;
+            max-width: 550px;
             box-shadow: 0 15px 30px rgba(0,0,0,0.4);
             text-align: center;
         }
@@ -117,7 +117,6 @@
             font-size: 1.1rem;
         }
 
-        /* Skor Tablosu Stilleri */
         .input-group {
             margin: 15px 0;
         }
@@ -133,6 +132,7 @@
             text-align: center;
         }
 
+        /* Liderlik Tablosu & Admin Stilleri */
         .leaderboard {
             margin-top: 20px;
             background: rgba(0, 0, 0, 0.2);
@@ -149,16 +149,62 @@
 
         .leaderboard-list {
             list-style: none;
-            max-height: 150px;
+            max-height: 220px;
             overflow-y: auto;
         }
 
         .leaderboard-item {
             display: flex;
             justify-content: space-between;
-            padding: 6px 0;
+            align-items: center;
+            padding: 8px 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             font-size: 0.95rem;
+        }
+
+        .admin-controls {
+            display: flex;
+            gap: 5px;
+        }
+
+        .admin-action-btn {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .admin-action-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .admin-panel-box {
+            margin-top: 15px;
+            padding: 12px;
+            background: rgba(233, 69, 96, 0.15);
+            border: 1px dashed #e94560;
+            border-radius: 10px;
+        }
+
+        .admin-panel-box input {
+            padding: 6px;
+            margin: 4px 0;
+            border-radius: 5px;
+            border: 1px solid #ff6b81;
+            background: rgba(0,0,0,0.4);
+            color: white;
+            width: 48%;
+        }
+
+        .admin-tag {
+            background: #e94560;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 5px;
         }
     </style>
 </head>
@@ -167,15 +213,28 @@
         <!-- Giris Ekrani -->
         <div id="start-screen" class="screen">
             <h1>Manifest Quiz</h1>
-            <p style="margin-bottom: 20px;">Ne kadar sıkı bir Manifest dinleyicisisin? Görelim!</p>
+            <p style="margin-bottom: 15px;">Ne kadar sıkı bir Manifest dinleyicisisin? Görelim!</p>
+            
             <button class="main-btn" onclick="oyunuBaslat()">Oyuna Başla</button>
 
-            <!-- Liderlik Tablosu -->
+            <!-- Ortak Canlı Skor Tablosu -->
             <div class="leaderboard">
-                <h3>🏆 En Yüksek Skorlar</h3>
+                <h3>🏆 Canlı Liderlik Tablosu <span id="admin-indicator" class="admin-tag hidden">ADMIN MODU</span></h3>
+                
                 <ul id="leaderboard-list" class="leaderboard-list">
                     <li style="text-align:center; color:#aaa;">Yükleniyor...</li>
                 </ul>
+
+                <!-- Admin Özel Ekli Alanı -->
+                <div id="admin-panel" class="admin-panel-box hidden">
+                    <h4 style="color:#e94560; margin-bottom:8px;">⚙️ Admin Yönetim Paneli</h4>
+                    <div>
+                        <input type="text" id="admin-add-name" placeholder="Oyuncu Adı">
+                        <input type="number" id="admin-add-score" placeholder="Puan">
+                        <button class="main-btn" style="font-size:0.85rem; padding:6px;" onclick="adminOyuncuEkle()">➕ Oyuncu Ekle</button>
+                    </div>
+                    <button class="main-btn" style="background:#ff4757; font-size:0.8rem; padding:6px; margin-top:8px;" onclick="tabloyuSifirla()">⚠️ Tüm Tabloyu Sıfırla</button>
+                </div>
             </div>
         </div>
 
@@ -211,40 +270,19 @@
 
     <script>
         var tumSorular = [
-            {
-                metin: "manifestin ilk sarkisi nedir?",
-                siklar: ["Zamansizdik", "Yasanacaksa", "Ariyo", "KTS"],
-                dogrusik: 0
-            },
-            {
-                metin: "Manifest Grubuna 1. olarak Katilan Sarkici kimdir?",
-                siklar: ["Esin", "Zoktay", "Sueda", "Lidya"],
-                dogrusik: 2
-            },
-            {
-                metin: "Mina hangi rengi temsil etmektedir?",
-                siklar: ["Lacivert", "Sari", "Kirmizi", "Turkuaz"],
-                dogrusik: 2
-            },
-            {
-                metin: "Manifestin en cok dinlenen sarkisi hangisidir?",
-                siklar: ["Hileli", "Toz pembe", "Yasanacaksa", "Snap"],
-                dogrusik: 3
-            },
-            {
-                metin: "Instagramda en cok takipcisi bulunan uye Kimdir?",
-                siklar: ["Esin", "Zoktay", "Lidya", "Hial"],
-                dogrusik: 1
-            }
+            { metin: "manifestin ilk sarkisi nedir?", siklar: ["Zamansizdik", "Yasanacaksa", "Ariyo", "KTS"], dogrusik: 0 },
+            { metin: "Manifest Grubuna 1. olarak Katilan Sarkici kimdir?", siklar: ["Esin", "Zoktay", "Sueda", "Lidya"], dogrusik: 2 },
+            { metin: "Mina hangi rengi temsil etmektedir?", siklar: ["Lacivert", "Sari", "Kirmizi", "Turkuaz"], dogrusik: 2 },
+            { metin: "Manifestin en cok dinlenen sarkisi hangisidir?", siklar: ["Hileli", "Toz pembe", "Yasanacaksa", "Snap"], dogrusik: 3 },
+            { metin: "Instagramda en cok takipcisi bulunan uye Kimdir?", siklar: ["Esin", "Zoktay", "Lidya", "Hial"], dogrusik: 1 }
         ];
 
         var aktifSorular = [];
         var mevcutSoruIndex = 0;
         var puan = 0;
+        var isAdmin = false;
 
-        // Ücretsiz Skor Veritabanı Bağlantısı (JSONBin)
-        var BIN_ID = "66bc8d8fe41b4d34e4202158"; 
-        var API_KEY = "$2a$10$wT0E0a5jA8O13QcR0L9e8.N41gE7JcZ/Z6mH8E0yX2uA3b4c5d6e"; 
+        var API_URL = "https://kvdb.io/8xK43fA9U2W3dK7x1B8q9Z/manifest_quiz_scores";
 
         function karistir(dizi) {
             return dizi.sort(function() { return 0.5 - Math.random(); });
@@ -265,7 +303,6 @@
 
         function soruyuGoster() {
             var soru = aktifSorular[mevcutSoruIndex];
-            
             document.getElementById("question-number").innerText = "Soru " + (mevcutSoruIndex + 1) + "/" + aktifSorular.length;
             document.getElementById("score-display").innerText = "Puan: " + puan;
             document.getElementById("question-text").innerText = soru.metin;
@@ -276,7 +313,6 @@
             document.getElementById("next-btn").classList.add("hidden");
 
             var harfler = ['A', 'B', 'C', 'D'];
-            
             for (var i = 0; i < soru.siklar.length; i++) {
                 (function(index) {
                     var btn = document.createElement("button");
@@ -291,10 +327,7 @@
         function cevabiKontrolEt(secilenIndex, secilenBtn) {
             var soru = aktifSorular[mevcutSoruIndex];
             var tumButonlar = document.querySelectorAll(".option-btn");
-            
-            for (var i = 0; i < tumButonlar.length; i++) {
-                tumButonlar[i].disabled = true;
-            }
+            for (var i = 0; i < tumButonlar.length; i++) tumButonlar[i].disabled = true;
 
             var feedback = document.getElementById("feedback");
             feedback.classList.remove("hidden");
@@ -317,11 +350,8 @@
 
         function sonrakiSoru() {
             mevcutSoruIndex++;
-            if (mevcutSoruIndex < aktifSorular.length) {
-                soruyuGoster();
-            } else {
-                oyunuBitir();
-            }
+            if (mevcutSoruIndex < aktifSorular.length) soruyuGoster();
+            else oyunuBitir();
         }
 
         function oyunuBitir() {
@@ -332,54 +362,164 @@
             document.getElementById("final-score").innerText = "Toplam Skorunuz: " + puan + " / " + maxPuan;
 
             var mesaj = document.getElementById("final-message");
-            if (puan === maxPuan) {
-                mesaj.innerText = "Koyu bir Manifest hayranısın! Bütün soruları bildin 🔥";
-            } else if (puan >= maxPuan / 2) {
-                mesaj.innerText = "Fena değil! Birkaç tekrarla tam puan alırsın 🎧";
-            } else {
-                mesaj.innerText = "Görünen o ki biraz daha Manifest dinlemelisin 😅";
-            }
+            if (puan === maxPuan) mesaj.innerText = "Koyu bir Manifest hayranısın! Bütün soruları bildin 🔥";
+            else if (puan >= maxPuan / 2) mesaj.innerText = "Fena değil! Birkaç tekrarla tam puan alırsın 🎧";
+            else mesaj.innerText = "Görünen o ki biraz daha Manifest dinlemelisin 😅";
         }
 
-        // Skorları Sunucudan Çekme
+        // Skorları Sunucudan Çek ve Göster
         function skorlariGetir() {
             var listEl = document.getElementById("leaderboard-list");
-            var localScores = JSON.parse(localStorage.getItem("manifest_scores") || "[]");
+            fetch(API_URL)
+                .then(res => res.json())
+                .then(data => {
+                    if (!data || data.length === 0) {
+                        listEl.innerHTML = "<li style='text-align:center; color:#aaa;'>Henüz kayıtlı skor yok!</li>";
+                        return;
+                    }
+                    data.sort((a, b) => b.puan - a.puan);
+                    listEl.innerHTML = "";
+                    
+                    data.forEach((item, index) => {
+                        var li = document.createElement("li");
+                        li.className = "leaderboard-item";
+                        
+                        var infoSpan = document.createElement("span");
+                        infoSpan.innerHTML = "<strong>" + (index + 1) + ".</strong> " + item.isim + " - <span style='color:#00fff5;'>" + item.puan + " Puan</span>";
+                        li.appendChild(infoSpan);
 
-            if (localScores.length === 0) {
-                listEl.innerHTML = "<li style='text-align:center; color:#aaa;'>Henüz kayıtlı skor yok!</li>";
-                return;
-            }
+                        // Admin yetkisi varsa Düzenle ve Sil butonları ekle
+                        if (isAdmin) {
+                            var ctrlDiv = document.createElement("div");
+                            ctrlDiv.className = "admin-controls";
 
-            localScores.sort(function(a, b) { return b.puan - a.puan; });
-            listEl.innerHTML = "";
+                            var editBtn = document.createElement("button");
+                            editBtn.className = "admin-action-btn";
+                            editBtn.innerText = "✏️";
+                            editBtn.onclick = function() { adminSkorDuzenle(index, item); };
 
-            for (var i = 0; i < Math.min(localScores.length, 5); i++) {
-                var item = document.createElement("li");
-                item.className = "leaderboard-item";
-                item.innerHTML = "<span>" + (i + 1) + ". " + localScores[i].isim + "</span><strong>" + localScores[i].puan + " Puan</strong>";
-                listEl.appendChild(item);
-            }
+                            var delBtn = document.createElement("button");
+                            delBtn.className = "admin-action-btn";
+                            delBtn.innerText = "❌";
+                            delBtn.onclick = function() { adminSkorSil(index); };
+
+                            ctrlDiv.appendChild(editBtn);
+                            ctrlDiv.appendChild(delBtn);
+                            li.appendChild(ctrlDiv);
+                        }
+
+                        listEl.appendChild(li);
+                    });
+                })
+                .catch(() => {
+                    listEl.innerHTML = "<li style='text-align:center; color:#aaa;'>Skorlar yüklenemedi.</li>";
+                });
         }
 
         // Skoru Kaydetme
         function skoruKaydet() {
-            var isim = document.getElementById("player-name").value.trim();
+            var isimInput = document.getElementById("player-name");
+            var isim = isimInput.value.trim();
             if (!isim) {
                 alert("Lütfen adınızı girin!");
                 return;
             }
 
-            var localScores = JSON.parse(localStorage.getItem("manifest_scores") || "[]");
-            localScores.push({ isim: isim, puan: puan });
-            localStorage.setItem("manifest_scores", JSON.stringify(localScores));
+            if (isim.toLowerCase() === "admin") {
+                adminModuAc();
+                alert("Admin modu aktifleşti!");
+            }
 
-            document.getElementById("save-score-box").classList.add("hidden");
-            alert("Skorunuz kaydedildi!");
+            fetch(API_URL)
+                .then(res => res.json())
+                .then(data => {
+                    var mevcutSkorlar = Array.isArray(data) ? data : [];
+                    mevcutSkorlar.push({ isim: isim, puan: puan });
+
+                    return veriyiKaydet(mevcutSkorlar);
+                })
+                .then(() => {
+                    document.getElementById("save-score-box").classList.add("hidden");
+                    alert("Skorunuz kaydedildi!");
+                    skorlariGetir();
+                });
+        }
+
+        // --- ADMIN İŞLEMLERİ ---
+
+        function adminModuAc() {
+            isAdmin = true;
+            document.getElementById("admin-indicator").classList.remove("hidden");
+            document.getElementById("admin-panel").classList.remove("hidden");
             skorlariGetir();
         }
 
-        // Sayfa açıldığında skorları listele
+        function veriyiKaydet(yeniVeri) {
+            return fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(yeniVeri)
+            });
+        }
+
+        function adminSkorSil(silinecekIndex) {
+            if (!confirm("Bu oyuncuyu silmek istediğine emin misin?")) return;
+
+            fetch(API_URL)
+                .then(res => res.json())
+                .then(data => {
+                    data.sort((a, b) => b.puan - a.puan);
+                    data.splice(silinecekIndex, 1);
+                    return veriyiKaydet(data);
+                })
+                .then(() => skorlariGetir());
+        }
+
+        function adminSkorDuzenle(duzenlenecekIndex, eskiVeri) {
+            var yeniIsim = prompt("Yeni İsim:", eskiVeri.isim);
+            if (yeniIsim === null) return;
+            var yeniPuan = prompt("Yeni Puan:", eskiVeri.puan);
+            if (yeniPuan === null) return;
+
+            fetch(API_URL)
+                .then(res => res.json())
+                .then(data => {
+                    data.sort((a, b) => b.puan - a.puan);
+                    data[duzenlenecekIndex] = { isim: yeniIsim, puan: parseInt(yeniPuan) || 0 };
+                    return veriyiKaydet(data);
+                })
+                .then(() => skorlariGetir());
+        }
+
+        function adminOyuncuEkle() {
+            var isim = document.getElementById("admin-add-name").value.trim();
+            var p = parseInt(document.getElementById("admin-add-score").value);
+
+            if (!isim || isNaN(p)) {
+                alert("Geçerli bir isim ve puan girin!");
+                return;
+            }
+
+            fetch(API_URL)
+                .then(res => res.json())
+                .then(data => {
+                    var mevcutSkorlar = Array.isArray(data) ? data : [];
+                    mevcutSkorlar.push({ isim: isim, puan: p });
+                    return veriyiKaydet(mevcutSkorlar);
+                })
+                .then(() => {
+                    document.getElementById("admin-add-name").value = "";
+                    document.getElementById("admin-add-score").value = "";
+                    skorlariGetir();
+                });
+        }
+
+        function tabloyuSifirla() {
+            if (confirm("Tüm tabloyu silmek istediğine emin misin?")) {
+                veriyiKaydet([]).then(() => skorlariGetir());
+            }
+        }
+
         skorlariGetir();
     </script>
 </body>
