@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manifest Quiz Oyunu</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .quiz-container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+            text-align: center;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            color: #e94560;
+        }
+
+        .quiz-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-weight: bold;
+            color: #00fff5;
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            margin-bottom: 25px;
+        }
+
+        .options-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #ff6b81;
+            transform: translateY(-2px);
+        }
+
+        .option-btn {
+            background: rgba(255, 255, 255, 0.1);
+            text-align: left;
+            display: flex;
+            align-items: center;
+        }
+
+        .option-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .option-btn.correct {
+            background: #2ed573 !important;
+            color: white;
+        }
+
+        .option-btn.wrong {
+            background: #ff4757 !important;
+            color: white;
+        }
+
+        .feedback-msg {
+            margin-bottom: 15px;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="quiz-container">
+        <!-- Giris Ekrani -->
+        <div id="start-screen" class="screen">
+            <h1>Manifest Quiz</h1>
+            <p style="margin-bottom: 20px;">Ne kadar sıkı bir Manifest dinleyicisisin? Görelim!</p>
+            <button id="start-btn" onclick="oyunuBaslat()">Oyuna Başla</button>
+        </div>
+
+        <!-- Soru Ekrani -->
+        <div id="quiz-screen" class="screen hidden">
+            <div class="quiz-header">
+                <span id="question-number">Soru 1/5</span>
+                <span id="score-display">Puan: 0</span>
+            </div>
+            
+            <h2 id="question-text">Soru metni</h2>
+            
+            <div id="options-container" class="options-grid"></div>
+
+            <div id="feedback" class="feedback-msg hidden"></div>
+            <button id="next-btn" class="hidden" onclick="sonrakiSoru()">Sonraki Soru</button>
+        </div>
+
+        <!-- Oyun Sonu Ekrani -->
+        <div id="end-screen" class="screen hidden">
+            <h1>Oyun Bitti!</h1>
+            <p id="final-score" style="margin-bottom: 10px;">Toplam Skorunuz: 0 / 50</p>
+            <p id="final-message" style="margin-bottom: 20px;"></p>
+            <button onclick="oyunuBaslat()">Tekrar Oyna</button>
+        </div>
+    </div>
+
+    <script>
+        var tumSorular = [
+            {
+                metin: "manifestin ilk sarkisi nedir?",
+                siklar: ["Zamansizdik", "Yasanacaksa", "Ariyo", "KTS"],
+                dogrusik: 0
+            },
+            {
+                metin: "Manifest Grubuna 1. olarak Katilan Sarkici kimdir?",
+                siklar: ["Esin", "Zoktay", "Sueda", "Lidya"],
+                dogrusik: 2
+            },
+            {
+                metin: "Mina hangi rengi temsil etmektedir?",
+                siklar: ["Lacivert", "Sari", "Kirmizi", "Turkuaz"],
+                dogrusik: 2
+            },
+            {
+                metin: "Manifestin en cok dinlenen sarkisi hangisidir?",
+                siklar: ["Hileli", "Toz pembe", "Yasanacaksa", "Snap"],
+                dogrusik: 3
+            },
+            {
+                metin: "Instagramda en cok takipcisi bulunan uye Kimdir?",
+                siklar: ["Esin", "Zoktay", "Lidya", "Hial"],
+                dogrusik: 1
+            }
+        ];
+
+        var aktifSorular = [];
+        var mevcutSoruIndex = 0;
+        var puan = 0;
+
+        function karistir(dizi) {
+            return dizi.sort(function() { return 0.5 - Math.random(); });
+        }
+
+        function oyunuBaslat() {
+            puan = 0;
+            mevcutSoruIndex = 0;
+            aktifSorular = karistir(tumSorular.slice());
+
+            document.getElementById("start-screen").classList.add("hidden");
+            document.getElementById("end-screen").classList.add("hidden");
+            document.getElementById("quiz-screen").classList.remove("hidden");
+
+            soruyuGoster();
+        }
+
+        function soruyuGoster() {
+            var soru = aktifSorular[mevcutSoruIndex];
+            
+            document.getElementById("question-number").innerText = "Soru " + (mevcutSoruIndex + 1) + "/" + aktifSorular.length;
+            document.getElementById("score-display").innerText = "Puan: " + puan;
+            document.getElementById("question-text").innerText = soru.metin;
+
+            var optionsContainer = document.getElementById("options-container");
+            optionsContainer.innerHTML = "";
+            document.getElementById("feedback").classList.add("hidden");
+            document.getElementById("next-btn").classList.add("hidden");
+
+            var harfler = ['A', 'B', 'C', 'D'];
+            
+            for (var i = 0; i < soru.siklar.length; i++) {
+                (function(index) {
+                    var btn = document.createElement("button");
+                    btn.className = "option-btn";
+                    btn.innerText = harfler[index] + ") " + soru.siklar[index];
+                    btn.onclick = function() { cevabiKontrolEt(index, btn); };
+                    optionsContainer.appendChild(btn);
+                })(i);
+            }
+        }
+
+        function cevabiKontrolEt(secilenIndex, secilenBtn) {
+            var soru = aktifSorular[mevcutSoruIndex];
+            var tumButonlar = document.querySelectorAll(".option-btn");
+            
+            for (var i = 0; i < tumButonlar.length; i++) {
+                tumButonlar[i].disabled = true;
+            }
+
+            var feedback = document.getElementById("feedback");
+            feedback.classList.remove("hidden");
+
+            if (secilenIndex === soru.dogrusik) {
+                secilenBtn.classList.add("correct");
+                puan += 10;
+                feedback.innerText = "TEBRİKLER! Doğru Cevap!";
+                feedback.style.color = "#2ed573";
+            } else {
+                secilenBtn.classList.add("wrong");
+                tumButonlar[soru.dogrusik].classList.add("correct");
+                feedback.innerText = "Yanlış... Git Manifest dinle!";
+                feedback.style.color = "#ff4757";
+            }
+
+            document.getElementById("score-display").innerText = "Puan: " + puan;
+            document.getElementById("next-btn").classList.remove("hidden");
+        }
+
+        function sonrakiSoru() {
+            mevcutSoruIndex++;
+            if (mevcutSoruIndex < aktifSorular.length) {
+                soruyuGoster();
+            } else {
+                oyunuBitir();
+            }
+        }
+
+        function oyunuBitir() {
+            document.getElementById("quiz-screen").classList.add("hidden");
+            document.getElementById("end-screen").classList.remove("hidden");
+            
+            var maxPuan = aktifSorular.length * 10;
+            document.getElementById("final-score").innerText = "Toplam Skorunuz: " + puan + " / " + maxPuan;
+
+            var mesaj = document.getElementById("final-message");
+            if (puan === maxPuan) {
+                mesaj.innerText = "Koyu bir Manifest hayranısın! Bütün soruları bildin 🔥";
+            } else if (puan >= maxPuan / 2) {
+                mesaj.innerText = "Fena değil! Birkaç tekrarla tam puan alırsın 🎧";
+            } else {
+                mesaj.innerText = "Görünen o ki biraz daha Manifest dinlemelisin 😅";
+            }
+        }
+    </script>
+</body>
+</html>
