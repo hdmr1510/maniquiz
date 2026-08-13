@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manifest Quiz Oyunu</title>
+    <!-- Firebase SDK (Google'ın Canlı Veritabanı) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -34,15 +37,9 @@
             text-align: center;
         }
 
-        .hidden {
-            display: none !important;
-        }
+        .hidden { display: none !important; }
 
-        h1 {
-            font-size: 2rem;
-            margin-bottom: 15px;
-            color: #e94560;
-        }
+        h1 { font-size: 2rem; margin-bottom: 15px; color: #e94560; }
 
         .quiz-header {
             display: flex;
@@ -52,10 +49,7 @@
             color: #00fff5;
         }
 
-        h2 {
-            font-size: 1.2rem;
-            margin-bottom: 25px;
-        }
+        h2 { font-size: 1.2rem; margin-bottom: 25px; }
 
         .options-grid {
             display: flex;
@@ -97,19 +91,9 @@
             transition: 0.2s;
         }
 
-        .option-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .option-btn.correct {
-            background: #2ed573 !important;
-            color: white;
-        }
-
-        .option-btn.wrong {
-            background: #ff4757 !important;
-            color: white;
-        }
+        .option-btn:hover { background: rgba(255, 255, 255, 0.2); }
+        .option-btn.correct { background: #2ed573 !important; color: white; }
+        .option-btn.wrong { background: #ff4757 !important; color: white; }
 
         .feedback-msg {
             margin-bottom: 15px;
@@ -117,9 +101,7 @@
             font-size: 1.1rem;
         }
 
-        .input-group {
-            margin: 15px 0;
-        }
+        .input-group { margin: 15px 0; }
 
         .input-group input {
             width: 100%;
@@ -161,10 +143,7 @@
             font-size: 0.95rem;
         }
 
-        .admin-controls {
-            display: flex;
-            gap: 5px;
-        }
+        .admin-controls { display: flex; gap: 5px; }
 
         .admin-action-btn {
             background: rgba(255,255,255,0.15);
@@ -174,10 +153,6 @@
             border-radius: 5px;
             cursor: pointer;
             font-size: 0.8rem;
-        }
-
-        .admin-action-btn:hover {
-            background: rgba(255,255,255,0.3);
         }
 
         .admin-panel-box {
@@ -212,19 +187,19 @@
         <!-- Giris Ekrani -->
         <div id="start-screen" class="screen">
             <h1>Manifest Quiz</h1>
-            <p style="margin-bottom: 15px;">Ne kadar sıkı bir Manifest dinleyicisisin? Görelim!</p>
+            <p style="margin-bottom: 15px;">Ne kadar sıkı bir Manifest dinleyicisisin?</p>
             
             <button class="main-btn" onclick="oyunuBaslat()">Oyuna Başla</button>
 
-            <!-- Ortak Canlı Skor Tablosu -->
+            <!-- Liderlik Tablosu -->
             <div class="leaderboard">
                 <h3>🏆 Canlı Liderlik Tablosu <span id="admin-indicator" class="admin-tag hidden">ADMIN MODU</span></h3>
                 
                 <ul id="leaderboard-list" class="leaderboard-list">
-                    <li style="text-align:center; color:#aaa;">Yükleniyor...</li>
+                    <li style="text-align:center; color:#aaa;">Skorlar Yükleniyor...</li>
                 </ul>
 
-                <!-- Admin Özel Ekli Alanı -->
+                <!-- Admin Paneli -->
                 <div id="admin-panel" class="admin-panel-box hidden">
                     <h4 style="color:#e94560; margin-bottom:8px;">⚙️ Admin Yönetim Paneli</h4>
                     <div>
@@ -263,11 +238,27 @@
                 <button id="save-btn" class="main-btn" onclick="skoruKaydet()">Skorumu Kaydet</button>
             </div>
 
-            <button class="main-btn" style="background: rgba(255,255,255,0.1);" onclick="anaSayfayaDon()">Ana Sayfaya Dön / Tekrar Oyna</button>
+            <button class="main-btn" style="background: rgba(255,255,255,0.1);" onclick="anaSayfayaDon()">Ana Sayfaya Dön</button>
         </div>
     </div>
 
     <script>
+        // Senin Ekranındaki Özel Firebase Bilgileri Entegre Edildi
+        const firebaseConfig = {
+            apiKey: "AIzaSyAIS1MoQhLMwSNG4xkmLrSgwn_0eegmsfM",
+            authDomain: "maniquiz.firebaseapp.com",
+            databaseURL: "https://maniquiz-default-rtdb.firebaseio.com",
+            projectId: "maniquiz",
+            storageBucket: "maniquiz.firebasestorage.app",
+            messagingSenderId: "689775602191",
+            appId: "1:689775602191:web:0df5f910d4c31e5b1e517a",
+            measurementId: "G-XRY139N4TX"
+        };
+
+        // Firebase Başlatma
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
         var tumSorular = [
             { metin: "manifestin ilk sarkisi nedir?", siklar: ["Zamansizdik", "Yasanacaksa", "Ariyo", "KTS"], dogrusik: 0 },
             { metin: "Manifest Grubuna 1. olarak Katilan Sarkici kimdir?", siklar: ["Esin", "Zoktay", "Sueda", "Lidya"], dogrusik: 2 },
@@ -280,9 +271,6 @@
         var mevcutSoruIndex = 0;
         var puan = 0;
         var isAdmin = false;
-
-        // Ücretsiz ve CORS engeli olmayan canlı JSON depolama endpoint'i
-        var API_URL = "https://api.jsonbin.io/v3/b/66b8e833ad19ca34f8952f10"; 
 
         function karistir(dizi) {
             return dizi.sort(function() { return 0.5 - Math.random(); });
@@ -305,7 +293,6 @@
             document.getElementById("quiz-screen").classList.add("hidden");
             document.getElementById("end-screen").classList.add("hidden");
             document.getElementById("start-screen").classList.remove("hidden");
-            skorlariGetir();
         }
 
         function soruyuGoster() {
@@ -374,65 +361,58 @@
             else mesaj.innerText = "Görünen o ki biraz daha Manifest dinlemelisin 😅";
         }
 
-        // Verileri API'den güvenli çekme
-        async function skorlariGetir() {
+        // Firebase Canlı Skor Dinleyici
+        db.ref("skorlar").on("value", function(snapshot) {
             var listEl = document.getElementById("leaderboard-list");
-            listEl.innerHTML = "<li style='text-align:center; color:#aaa;'>Skorlar güncelleniyor...</li>";
+            var val = snapshot.val();
 
-            try {
-                var res = await fetch(API_URL + "/latest", {
-                    headers: { "X-Master-Key": "$2a$10$v4WzQkUo.3oK9b1.2lZ2I.qXGk3/e/f8vWkG7a6V8X8v" } // Herkesin erişebildiği okuma anahtarı
-                });
-                if (!res.ok) throw new Error("Ağ hatası");
-                var result = await res.json();
-                var data = result.record || [];
+            if (!val) {
+                listEl.innerHTML = "<li style='text-align:center; color:#aaa;'>Henüz kayıtlı skor yok!</li>";
+                return;
+            }
 
-                if (!data || data.length === 0) {
-                    listEl.innerHTML = "<li style='text-align:center; color:#aaa;'>Henüz kayıtlı skor yok!</li>";
-                    return;
+            var data = [];
+            for (var key in val) {
+                data.push({ id: key, isim: val[key].isim, puan: val[key].puan });
+            }
+
+            data.sort((a, b) => b.puan - a.puan);
+            listEl.innerHTML = "";
+
+            data.forEach((item, index) => {
+                var li = document.createElement("li");
+                li.className = "leaderboard-item";
+
+                var infoSpan = document.createElement("span");
+                infoSpan.innerHTML = "<strong>" + (index + 1) + ".</strong> " + item.isim + " - <span style='color:#00fff5;'>" + item.puan + " Puan</span>";
+                li.appendChild(infoSpan);
+
+                if (isAdmin) {
+                    var ctrlDiv = document.createElement("div");
+                    ctrlDiv.className = "admin-controls";
+
+                    var editBtn = document.createElement("button");
+                    editBtn.className = "admin-action-btn";
+                    editBtn.innerText = "✏️";
+                    editBtn.onclick = function() { adminSkorDuzenle(item.id, item.isim, item.puan); };
+
+                    var delBtn = document.createElement("button");
+                    delBtn.className = "admin-action-btn";
+                    delBtn.innerText = "❌";
+                    delBtn.onclick = function() { adminSkorSil(item.id); };
+
+                    ctrlDiv.appendChild(editBtn);
+                    ctrlDiv.appendChild(delBtn);
+                    li.appendChild(ctrlDiv);
                 }
 
-                data.sort((a, b) => b.puan - a.puan);
-                listEl.innerHTML = "";
+                listEl.appendChild(li);
+            });
+        });
 
-                data.forEach((item, index) => {
-                    var li = document.createElement("li");
-                    li.className = "leaderboard-item";
-
-                    var infoSpan = document.createElement("span");
-                    infoSpan.innerHTML = "<strong>" + (index + 1) + ".</strong> " + item.isim + " - <span style='color:#00fff5;'>" + item.puan + " Puan</span>";
-                    li.appendChild(infoSpan);
-
-                    if (isAdmin) {
-                        var ctrlDiv = document.createElement("div");
-                        ctrlDiv.className = "admin-controls";
-
-                        var editBtn = document.createElement("button");
-                        editBtn.className = "admin-action-btn";
-                        editBtn.innerText = "✏️";
-                        editBtn.onclick = function() { adminSkorDuzenle(index, item); };
-
-                        var delBtn = document.createElement("button");
-                        delBtn.className = "admin-action-btn";
-                        delBtn.innerText = "❌";
-                        delBtn.onclick = function() { adminSkorSil(index); };
-
-                        ctrlDiv.appendChild(editBtn);
-                        ctrlDiv.appendChild(delBtn);
-                        li.appendChild(ctrlDiv);
-                    }
-
-                    listEl.appendChild(li);
-                });
-            } catch (err) {
-                listEl.innerHTML = "<li style='text-align:center; color:#ff4757;'>Skorlar yüklenemedi. İnternet bağlantını kontrol et.</li>";
-            }
-        }
-
-        // Skor Kaydetme Fonksiyonu
-        async function skoruKaydet() {
+        // Skoru Firebase'e Ekleme
+        function skoruKaydet() {
             var isimInput = document.getElementById("player-name");
-            var saveBtn = document.getElementById("save-btn");
             var isim = isimInput.value.trim();
 
             if (!isim) {
@@ -447,42 +427,15 @@
                 return;
             }
 
-            saveBtn.disabled = true;
-            saveBtn.innerText = "Kaydediliyor...";
-
-            try {
-                // Önce mevcut verileri al
-                var getRes = await fetch(API_URL + "/latest", {
-                    headers: { "X-Master-Key": "$2a$10$v4WzQkUo.3oK9b1.2lZ2I.qXGk3/e/f8vWkG7a6V8X8v" }
-                });
-                var getJson = await getRes.json();
-                var mevcutSkorlar = Array.isArray(getJson.record) ? getJson.record : [];
-
-                // Yeni skoru ekle
-                mevcutSkorlar.push({ isim: isim, puan: puan });
-
-                // Yeni veriyi kaydet
-                await veriyiKaydet(mevcutSkorlar);
-
+            db.ref("skorlar").push({
+                isim: isim,
+                puan: puan
+            }).then(() => {
                 document.getElementById("save-score-box").classList.add("hidden");
-                alert("Skorunuz başarıyla kaydedildi!");
+                alert("Skorunuz kaydedildi!");
                 anaSayfayaDon();
-            } catch (err) {
-                alert("Skor kaydedilirken hata oluştu. Lütfen tekrar deneyin!");
-            } finally {
-                saveBtn.disabled = false;
-                saveBtn.innerText = "Skorumu Kaydet";
-            }
-        }
-
-        function veriyiKaydet(yeniVeri) {
-            return fetch(API_URL, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Master-Key': '$2a$10$v4WzQkUo.3oK9b1.2lZ2I.qXGk3/e/f8vWkG7a6V8X8v'
-                },
-                body: JSON.stringify(yeniVeri)
+            }).catch((err) => {
+                alert("Hata oluştu: " + err.message);
             });
         }
 
@@ -490,51 +443,28 @@
             isAdmin = true;
             document.getElementById("admin-indicator").classList.remove("hidden");
             document.getElementById("admin-panel").classList.remove("hidden");
-            skorlariGetir();
+            db.ref("skorlar").once("value"); 
         }
 
-        async function adminSkorSil(silinecekIndex) {
-            if (!confirm("Bu oyuncuyu silmek istediğine emin misin?")) return;
-
-            try {
-                var res = await fetch(API_URL + "/latest", {
-                    headers: { "X-Master-Key": "$2a$10$v4WzQkUo.3oK9b1.2lZ2I.qXGk3/e/f8vWkG7a6V8X8v" }
-                });
-                var json = await res.json();
-                var data = json.record || [];
-                data.sort((a, b) => b.puan - a.puan);
-                data.splice(silinecekIndex, 1);
-
-                await veriyiKaydet(data);
-                skorlariGetir();
-            } catch(e) {
-                alert("Silme işlemi başarısız.");
+        function adminSkorSil(id) {
+            if (confirm("Bu oyuncuyu silmek istediğine emin misin?")) {
+                db.ref("skorlar/" + id).remove();
             }
         }
 
-        async function adminSkorDuzenle(duzenlenecekIndex, eskiVeri) {
-            var yeniIsim = prompt("Yeni İsim:", eskiVeri.isim);
+        function adminSkorDuzenle(id, eskiIsim, eskiPuan) {
+            var yeniIsim = prompt("Yeni İsim:", eskiIsim);
             if (yeniIsim === null) return;
-            var yeniPuan = prompt("Yeni Puan:", eskiVeri.puan);
+            var yeniPuan = prompt("Yeni Puan:", eskiPuan);
             if (yeniPuan === null) return;
 
-            try {
-                var res = await fetch(API_URL + "/latest", {
-                    headers: { "X-Master-Key": "$2a$10$v4WzQkUo.3oK9b1.2lZ2I.qXGk3/e/f8vWkG7a6V8X8v" }
-                });
-                var json = await res.json();
-                var data = json.record || [];
-                data.sort((a, b) => b.puan - a.puan);
-                data[duzenlenecekIndex] = { isim: yeniIsim, puan: parseInt(yeniPuan) || 0 };
-
-                await veriyiKaydet(data);
-                skorlariGetir();
-            } catch(e) {
-                alert("Düzenleme başarısız.");
-            }
+            db.ref("skorlar/" + id).update({
+                isim: yeniIsim,
+                puan: parseInt(yeniPuan) || 0
+            });
         }
 
-        async function adminOyuncuEkle() {
+        function adminOyuncuEkle() {
             var isim = document.getElementById("admin-add-name").value.trim();
             var p = parseInt(document.getElementById("admin-add-score").value);
 
@@ -543,33 +473,20 @@
                 return;
             }
 
-            try {
-                var res = await fetch(API_URL + "/latest", {
-                    headers: { "X-Master-Key": "$2a$10$v4WzQkUo.3oK9b1.2lZ2I.qXGk3/e/f8vWkG7a6V8X8v" }
-                });
-                var json = await res.json();
-                var mevcutSkorlar = Array.isArray(json.record) ? json.record : [];
-                mevcutSkorlar.push({ isim: isim, puan: p });
+            db.ref("skorlar").push({
+                isim: isim,
+                puan: p
+            });
 
-                await veriyiKaydet(mevcutSkorlar);
-
-                document.getElementById("admin-add-name").value = "";
-                document.getElementById("admin-add-score").value = "";
-                skorlariGetir();
-            } catch(e) {
-                alert("Ekleme başarısız.");
-            }
+            document.getElementById("admin-add-name").value = "";
+            document.getElementById("admin-add-score").value = "";
         }
 
-        async function tabloyuSifirla() {
+        function tabloyuSifirla() {
             if (confirm("Tüm tabloyu silmek istediğine emin misin?")) {
-                await veriyiKaydet([]);
-                skorlariGetir();
+                db.ref("skorlar").remove();
             }
         }
-
-        // Sayfa açıldığında skorları getir
-        skorlariGetir();
     </script>
 </body>
 </html>
