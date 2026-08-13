@@ -132,7 +132,6 @@
             text-align: center;
         }
 
-        /* Liderlik Tablosu & Admin Stilleri */
         .leaderboard {
             margin-top: 20px;
             background: rgba(0, 0, 0, 0.2);
@@ -264,7 +263,7 @@
                 <button class="main-btn" onclick="skoruKaydet()">Skorumu Kaydet</button>
             </div>
 
-            <button class="main-btn" style="background: rgba(255,255,255,0.1);" onclick="oyunuBaslat()">Tekrar Oyna</button>
+            <button class="main-btn" style="background: rgba(255,255,255,0.1);" onclick="anaSayfayaDon()">Ana Sayfaya Dön / Tekrar Oyna</button>
         </div>
     </div>
 
@@ -299,6 +298,13 @@
             document.getElementById("save-score-box").classList.remove("hidden");
 
             soruyuGoster();
+        }
+
+        function anaSayfayaDon() {
+            document.getElementById("quiz-screen").classList.add("hidden");
+            document.getElementById("end-screen").classList.add("hidden");
+            document.getElementById("start-screen").classList.remove("hidden");
+            skorlariGetir();
         }
 
         function soruyuGoster() {
@@ -367,7 +373,6 @@
             else mesaj.innerText = "Görünen o ki biraz daha Manifest dinlemelisin 😅";
         }
 
-        // Skorları Sunucudan Çek ve Göster
         function skorlariGetir() {
             var listEl = document.getElementById("leaderboard-list");
             fetch(API_URL)
@@ -388,7 +393,6 @@
                         infoSpan.innerHTML = "<strong>" + (index + 1) + ".</strong> " + item.isim + " - <span style='color:#00fff5;'>" + item.puan + " Puan</span>";
                         li.appendChild(infoSpan);
 
-                        // Admin yetkisi varsa Düzenle ve Sil butonları ekle
                         if (isAdmin) {
                             var ctrlDiv = document.createElement("div");
                             ctrlDiv.className = "admin-controls";
@@ -416,7 +420,6 @@
                 });
         }
 
-        // Skoru Kaydetme
         function skoruKaydet() {
             var isimInput = document.getElementById("player-name");
             var isim = isimInput.value.trim();
@@ -427,7 +430,9 @@
 
             if (isim.toLowerCase() === "admin") {
                 adminModuAc();
-                alert("Admin modu aktifleşti!");
+                alert("Admin modu aktifleşti! Ana sayfadaki liderlik tablosundan paneli kullanabilirsin.");
+                anaSayfayaDon();
+                return;
             }
 
             fetch(API_URL)
@@ -435,17 +440,14 @@
                 .then(data => {
                     var mevcutSkorlar = Array.isArray(data) ? data : [];
                     mevcutSkorlar.push({ isim: isim, puan: puan });
-
                     return veriyiKaydet(mevcutSkorlar);
                 })
                 .then(() => {
                     document.getElementById("save-score-box").classList.add("hidden");
                     alert("Skorunuz kaydedildi!");
-                    skorlariGetir();
+                    anaSayfayaDon();
                 });
         }
-
-        // --- ADMIN İŞLEMLERİ ---
 
         function adminModuAc() {
             isAdmin = true;
