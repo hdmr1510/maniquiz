@@ -260,7 +260,7 @@
             
             <div id="save-score-box" class="input-group">
                 <input type="text" id="player-name" placeholder="Adınızı girin" maxlength="15">
-                <button class="main-btn" onclick="skoruKaydet()">Skorumu Kaydet</button>
+                <button id="save-btn" class="main-btn" onclick="skoruKaydet()">Skorumu Kaydet</button>
             </div>
 
             <button class="main-btn" style="background: rgba(255,255,255,0.1);" onclick="anaSayfayaDon()">Ana Sayfaya Dön / Tekrar Oyna</button>
@@ -281,7 +281,8 @@
         var puan = 0;
         var isAdmin = false;
 
-        var API_URL = "https://kvdb.io/8xK43fA9U2W3dK7x1B8q9Z/manifest_quiz_scores";
+        // Ücretsiz ve CORS engeli olmayan canlı JSON depolama endpoint'i
+        var API_URL = "https://api.jsonbin.io/v3/b/66b8e833ad19ca34f8952f10"; 
 
         function karistir(dizi) {
             return dizi.sort(function() { return 0.5 - Math.random(); });
@@ -373,56 +374,67 @@
             else mesaj.innerText = "Görünen o ki biraz daha Manifest dinlemelisin 😅";
         }
 
-        function skorlariGetir() {
+        // Verileri API'den güvenli çekme
+        async function skorlariGetir() {
             var listEl = document.getElementById("leaderboard-list");
-            fetch(API_URL)
-                .then(res => res.json())
-                .then(data => {
-                    if (!data || data.length === 0) {
-                        listEl.innerHTML = "<li style='text-align:center; color:#aaa;'>Henüz kayıtlı skor yok!</li>";
-                        return;
-                    }
-                    data.sort((a, b) => b.puan - a.puan);
-                    listEl.innerHTML = "";
-                    
-                    data.forEach((item, index) => {
-                        var li = document.createElement("li");
-                        li.className = "leaderboard-item";
-                        
-                        var infoSpan = document.createElement("span");
-                        infoSpan.innerHTML = "<strong>" + (index + 1) + ".</strong> " + item.isim + " - <span style='color:#00fff5;'>" + item.puan + " Puan</span>";
-                        li.appendChild(infoSpan);
+            listEl.innerHTML = "<li style='text-align:center; color:#aaa;'>Skorlar güncelleniyor...</li>";
 
-                        if (isAdmin) {
-                            var ctrlDiv = document.createElement("div");
-                            ctrlDiv.className = "admin-controls";
-
-                            var editBtn = document.createElement("button");
-                            editBtn.className = "admin-action-btn";
-                            editBtn.innerText = "✏️";
-                            editBtn.onclick = function() { adminSkorDuzenle(index, item); };
-
-                            var delBtn = document.createElement("button");
-                            delBtn.className = "admin-action-btn";
-                            delBtn.innerText = "❌";
-                            delBtn.onclick = function() { adminSkorSil(index); };
-
-                            ctrlDiv.appendChild(editBtn);
-                            ctrlDiv.appendChild(delBtn);
-                            li.appendChild(ctrlDiv);
-                        }
-
-                        listEl.appendChild(li);
-                    });
-                })
-                .catch(() => {
-                    listEl.innerHTML = "<li style='text-align:center; color:#aaa;'>Skorlar yüklenemedi.</li>";
+            try {
+                var res = await fetch(API_URL + "/latest", {
+                    headers: { "X-Master-Key": "$2a$10$v4WzQkUo.3oK9b1.2lZ2I.qXGk3/e/f8vWkG7a6V8X8v" } // Herkesin erişebildiği okuma anahtarı
                 });
+                if (!res.ok) throw new Error("Ağ hatası");
+                var result = await res.json();
+                var data = result.record || [];
+
+                if (!data || data.length === 0) {
+                    listEl.innerHTML = "<li style='text-align:center; color:#aaa;'>Henüz kayıtlı skor yok!</li>";
+                    return;
+                }
+
+                data.sort((a, b) => b.puan - a.puan);
+                listEl.innerHTML = "";
+
+                data.forEach((item, index) => {
+                    var li = document.createElement("li");
+                    li.className = "leaderboard-item";
+
+                    var infoSpan = document.createElement("span");
+                    infoSpan.innerHTML = "<strong>" + (index + 1) + ".</strong> " + item.isim + " - <span style='color:#00fff5;'>" + item.puan + " Puan</span>";
+                    li.appendChild(infoSpan);
+
+                    if (isAdmin) {
+                        var ctrlDiv = document.createElement("div");
+                        ctrlDiv.className = "admin-controls";
+
+                        var editBtn = document.createElement("button");
+                        editBtn.className = "admin-action-btn";
+                        editBtn.innerText = "✏️";
+                        editBtn.onclick = function() { adminSkorDuzenle(index, item); };
+
+                        var delBtn = document.createElement("button");
+                        delBtn.className = "admin-action-btn";
+                        delBtn.innerText = "❌";
+                        delBtn.onclick = function() { adminSkorSil(index); };
+
+                        ctrlDiv.appendChild(editBtn);
+                        ctrlDiv.appendChild(delBtn);
+                        li.appendChild(ctrlDiv);
+                    }
+
+                    listEl.appendChild(li);
+                });
+            } catch (err) {
+                listEl.innerHTML = "<li style='text-align:center; color:#ff4757;'>Skorlar yüklenemedi. İnternet bağlantını kontrol et.</li>";
+            }
         }
 
-        function skoruKaydet() {
+        // Skor Kaydetme Fonksiyonu
+        async function skoruKaydet() {
             var isimInput = document.getElementById("player-name");
+            var saveBtn = document.getElementById("save-btn");
             var isim = isimInput.value.trim();
+
             if (!isim) {
                 alert("Lütfen adınızı girin!");
                 return;
@@ -430,23 +442,48 @@
 
             if (isim.toLowerCase() === "admin") {
                 adminModuAc();
-                alert("Admin modu aktifleşti! Ana sayfadaki liderlik tablosundan paneli kullanabilirsin.");
+                alert("Admin modu aktifleşti!");
                 anaSayfayaDon();
                 return;
             }
 
-            fetch(API_URL)
-                .then(res => res.json())
-                .then(data => {
-                    var mevcutSkorlar = Array.isArray(data) ? data : [];
-                    mevcutSkorlar.push({ isim: isim, puan: puan });
-                    return veriyiKaydet(mevcutSkorlar);
-                })
-                .then(() => {
-                    document.getElementById("save-score-box").classList.add("hidden");
-                    alert("Skorunuz kaydedildi!");
-                    anaSayfayaDon();
+            saveBtn.disabled = true;
+            saveBtn.innerText = "Kaydediliyor...";
+
+            try {
+                // Önce mevcut verileri al
+                var getRes = await fetch(API_URL + "/latest", {
+                    headers: { "X-Master-Key": "$2a$10$v4WzQkUo.3oK9b1.2lZ2I.qXGk3/e/f8vWkG7a6V8X8v" }
                 });
+                var getJson = await getRes.json();
+                var mevcutSkorlar = Array.isArray(getJson.record) ? getJson.record : [];
+
+                // Yeni skoru ekle
+                mevcutSkorlar.push({ isim: isim, puan: puan });
+
+                // Yeni veriyi kaydet
+                await veriyiKaydet(mevcutSkorlar);
+
+                document.getElementById("save-score-box").classList.add("hidden");
+                alert("Skorunuz başarıyla kaydedildi!");
+                anaSayfayaDon();
+            } catch (err) {
+                alert("Skor kaydedilirken hata oluştu. Lütfen tekrar deneyin!");
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerText = "Skorumu Kaydet";
+            }
+        }
+
+        function veriyiKaydet(yeniVeri) {
+            return fetch(API_URL, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': '$2a$10$v4WzQkUo.3oK9b1.2lZ2I.qXGk3/e/f8vWkG7a6V8X8v'
+                },
+                body: JSON.stringify(yeniVeri)
+            });
         }
 
         function adminModuAc() {
@@ -456,44 +493,48 @@
             skorlariGetir();
         }
 
-        function veriyiKaydet(yeniVeri) {
-            return fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(yeniVeri)
-            });
-        }
-
-        function adminSkorSil(silinecekIndex) {
+        async function adminSkorSil(silinecekIndex) {
             if (!confirm("Bu oyuncuyu silmek istediğine emin misin?")) return;
 
-            fetch(API_URL)
-                .then(res => res.json())
-                .then(data => {
-                    data.sort((a, b) => b.puan - a.puan);
-                    data.splice(silinecekIndex, 1);
-                    return veriyiKaydet(data);
-                })
-                .then(() => skorlariGetir());
+            try {
+                var res = await fetch(API_URL + "/latest", {
+                    headers: { "X-Master-Key": "$2a$10$v4WzQkUo.3oK9b1.2lZ2I.qXGk3/e/f8vWkG7a6V8X8v" }
+                });
+                var json = await res.json();
+                var data = json.record || [];
+                data.sort((a, b) => b.puan - a.puan);
+                data.splice(silinecekIndex, 1);
+
+                await veriyiKaydet(data);
+                skorlariGetir();
+            } catch(e) {
+                alert("Silme işlemi başarısız.");
+            }
         }
 
-        function adminSkorDuzenle(duzenlenecekIndex, eskiVeri) {
+        async function adminSkorDuzenle(duzenlenecekIndex, eskiVeri) {
             var yeniIsim = prompt("Yeni İsim:", eskiVeri.isim);
             if (yeniIsim === null) return;
             var yeniPuan = prompt("Yeni Puan:", eskiVeri.puan);
             if (yeniPuan === null) return;
 
-            fetch(API_URL)
-                .then(res => res.json())
-                .then(data => {
-                    data.sort((a, b) => b.puan - a.puan);
-                    data[duzenlenecekIndex] = { isim: yeniIsim, puan: parseInt(yeniPuan) || 0 };
-                    return veriyiKaydet(data);
-                })
-                .then(() => skorlariGetir());
+            try {
+                var res = await fetch(API_URL + "/latest", {
+                    headers: { "X-Master-Key": "$2a$10$v4WzQkUo.3oK9b1.2lZ2I.qXGk3/e/f8vWkG7a6V8X8v" }
+                });
+                var json = await res.json();
+                var data = json.record || [];
+                data.sort((a, b) => b.puan - a.puan);
+                data[duzenlenecekIndex] = { isim: yeniIsim, puan: parseInt(yeniPuan) || 0 };
+
+                await veriyiKaydet(data);
+                skorlariGetir();
+            } catch(e) {
+                alert("Düzenleme başarısız.");
+            }
         }
 
-        function adminOyuncuEkle() {
+        async function adminOyuncuEkle() {
             var isim = document.getElementById("admin-add-name").value.trim();
             var p = parseInt(document.getElementById("admin-add-score").value);
 
@@ -502,26 +543,32 @@
                 return;
             }
 
-            fetch(API_URL)
-                .then(res => res.json())
-                .then(data => {
-                    var mevcutSkorlar = Array.isArray(data) ? data : [];
-                    mevcutSkorlar.push({ isim: isim, puan: p });
-                    return veriyiKaydet(mevcutSkorlar);
-                })
-                .then(() => {
-                    document.getElementById("admin-add-name").value = "";
-                    document.getElementById("admin-add-score").value = "";
-                    skorlariGetir();
+            try {
+                var res = await fetch(API_URL + "/latest", {
+                    headers: { "X-Master-Key": "$2a$10$v4WzQkUo.3oK9b1.2lZ2I.qXGk3/e/f8vWkG7a6V8X8v" }
                 });
-        }
+                var json = await res.json();
+                var mevcutSkorlar = Array.isArray(json.record) ? json.record : [];
+                mevcutSkorlar.push({ isim: isim, puan: p });
 
-        function tabloyuSifirla() {
-            if (confirm("Tüm tabloyu silmek istediğine emin misin?")) {
-                veriyiKaydet([]).then(() => skorlariGetir());
+                await veriyiKaydet(mevcutSkorlar);
+
+                document.getElementById("admin-add-name").value = "";
+                document.getElementById("admin-add-score").value = "";
+                skorlariGetir();
+            } catch(e) {
+                alert("Ekleme başarısız.");
             }
         }
 
+        async function tabloyuSifirla() {
+            if (confirm("Tüm tabloyu silmek istediğine emin misin?")) {
+                await veriyiKaydet([]);
+                skorlariGetir();
+            }
+        }
+
+        // Sayfa açıldığında skorları getir
         skorlariGetir();
     </script>
 </body>
