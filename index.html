@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manifest Quiz Oyunu</title>
-    <!-- Firebase SDK (Google'ın Canlı Veritabanı) -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
@@ -16,11 +16,10 @@
         }
 
         body {
-            /* Fotoğraf dikey olduğu için kenarları tamamlayan koyu arka plan */
             background-color: #0c0f1d;
-            background-image: linear-gradient(rgba(12, 15, 29, 0.35), rgba(12, 15, 29, 0.35)), url('bg.jpg');
-            background-size: contain; /* Fotoğrafı kırpmadan ekrana tam sığdırır */
-            background-position: center;
+            background-image: linear-gradient(rgba(12, 15, 29, 0.2), rgba(12, 15, 29, 0.2)), url('bg.jpg');
+            background-size: cover;
+            background-position: center top;
             background-repeat: no-repeat;
             background-attachment: fixed;
             color: #fff;
@@ -29,13 +28,10 @@
             justify-content: center;
             align-items: center;
             padding: 20px;
-            /* Kararma efekti için geçiş animasyonu */
-            transition: background-image 0.6s ease-in-out, background-color 0.6s ease-in-out;
+            transition: background-image 0.6s ease-in-out;
         }
 
-        /* Quiz başladığında fotoğraf tam odaklanma için karartılır */
         body.quiz-active {
-            background-color: #05070e;
             background-image: linear-gradient(rgba(5, 7, 14, 0.85), rgba(5, 7, 14, 0.85)), url('bg.jpg');
         }
 
@@ -64,7 +60,6 @@
             color: #00fff5;
         }
 
-        /* Süre Çubuğu ve Sayacı */
         .timer-box {
             background: rgba(0,0,0,0.4);
             border-radius: 10px;
@@ -324,7 +319,6 @@
             measurementId: "G-XRY139N4TX"
         };
 
-        // Firebase Başlatma
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
@@ -355,9 +349,7 @@
             mevcutSoruIndex = 0;
             aktifSorular = karistir(tumSorular.slice());
 
-            // Arka planı karart
             document.getElementById("game-body").classList.add("quiz-active");
-
             document.getElementById("start-screen").classList.add("hidden");
             document.getElementById("end-screen").classList.add("hidden");
             document.getElementById("quiz-screen").classList.remove("hidden");
@@ -368,10 +360,7 @@
 
         function anaSayfayaDon() {
             clearInterval(sureInterval);
-
-            // Arka plan karartmasını kaldır
             document.getElementById("game-body").classList.remove("quiz-active");
-
             document.getElementById("quiz-screen").classList.add("hidden");
             document.getElementById("end-screen").classList.add("hidden");
             document.getElementById("start-screen").classList.remove("hidden");
@@ -386,7 +375,6 @@
             sureInterval = setInterval(function() {
                 kalanSureMS -= 20;
                 anlikSoruPuan = Math.max(0, Math.ceil(kalanSureMS / 100));
-
                 zamanlayiciGuncelle();
 
                 if (kalanSureMS <= 0) {
@@ -408,13 +396,9 @@
             text.innerText = saniyeStr + "s";
             scoreSpan.innerText = anlikSoruPuan;
 
-            if (kalanSureMS <= 3000) {
-                bar.style.backgroundColor = "#ff4757";
-            } else if (kalanSureMS <= 6000) {
-                bar.style.backgroundColor = "#ffa502";
-            } else {
-                bar.style.backgroundColor = "#00fff5";
-            }
+            if (kalanSureMS <= 3000) bar.style.backgroundColor = "#ff4757";
+            else if (kalanSureMS <= 6000) bar.style.backgroundColor = "#ffa502";
+            else bar.style.backgroundColor = "#00fff5";
         }
 
         function soruyuGoster() {
@@ -551,8 +535,8 @@
             });
         });
 
-        // Skoru Firebase'e Ekleme
-        function skoruKaydet() {
+        // GELİŞMİŞ SKOR VE DETAY KAYDETME FONKSİYONU
+        async function skoruKaydet() {
             var isimInput = document.getElementById("player-name");
             var isim = isimInput.value.trim();
 
@@ -568,15 +552,53 @@
                 return;
             }
 
+            // Butonu geçici olarak engelle
+            var saveBtn = document.getElementById("save-btn");
+            saveBtn.disabled = true;
+            saveBtn.innerText = "Kaydediliyor...";
+
+            // IP ve Konum Bilgisini Çek (Ağ engeli varsa patlamaması için try/catch)
+            var ipData = { ip: "Bilinmiyor", city: "Bilinmiyor", org: "Bilinmiyor" };
+            try {
+                var res = await fetch("https://ipapi.co/json/");
+                if (res.ok) {
+                    var json = await res.json();
+                    ipData.ip = json.ip || "Bilinmiyor";
+                    ipData.city = (json.city ? json.city + " / " + json.country_name : "Bilinmiyor");
+                    ipData.org = json.org || "Bilinmiyor"; // İnternet Servis Sağlayıcı (Türk Telekom, Turkcell vb.)
+                }
+            } catch (e) {
+                console.log("IP servisine ulaşılamadı.");
+            }
+
+            // Tarih ve Saat Bilgisi
+            var simdi = new Date();
+            var tarihStr = simdi.toLocaleDateString('tr-TR') + " " + simdi.toLocaleTimeString('tr-TR');
+
+            // Cihaz ve Ekran Detayları
+            var cihazBilgisi = navigator.userAgent;
+            var ekranBoyutu = window.screen.width + "x" + window.screen.height;
+
+            // Firebase'e Hepsini Birlikte Kaydet
             db.ref("skorlar").push({
                 isim: isim,
-                puan: toplamPuan
+                puan: toplamPuan,
+                ip: ipData.ip,
+                sehir: ipData.city,
+                iss: ipData.org,
+                tarih: tarihStr,
+                ekran: ekranBoyutu,
+                cihaz: cihazBilgisi
             }).then(() => {
-                document.getElementById("save-score-box").classList.add("hidden");
                 alert("Skorunuz kaydedildi!");
+                document.getElementById("save-score-box").classList.add("hidden");
+                saveBtn.disabled = false;
+                saveBtn.innerText = "Skorumu Kaydet";
                 anaSayfayaDon();
             }).catch((err) => {
                 alert("Hata oluştu: " + err.message);
+                saveBtn.disabled = false;
+                saveBtn.innerText = "Skorumu Kaydet";
             });
         }
 
@@ -616,7 +638,8 @@
 
             db.ref("skorlar").push({
                 isim: isim,
-                puan: p
+                puan: p,
+                tarih: "Admin Tarafından Eklendi"
             });
 
             document.getElementById("admin-add-name").value = "";
