@@ -16,24 +16,37 @@
         }
 
         body {
-            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            /* Başlangıçta fotoğraf hafif karartılmış olarak görünür */
+            background-image: linear-gradient(rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.4)), url('bg.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
             color: #fff;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
+            /* Kararma efekti için geçiş animasyonu */
+            transition: background-image 0.6s ease-in-out;
+        }
+
+        /* Quiz başladığında fotoğraf tam odaklanma için karartılır */
+        body.quiz-active {
+            background-image: linear-gradient(rgba(10, 15, 30, 0.85), rgba(10, 15, 30, 0.85)), url('bg.jpg');
         }
 
         .quiz-container {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(15, 20, 35, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
             border-radius: 20px;
             padding: 30px;
             width: 100%;
             max-width: 550px;
-            box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
             text-align: center;
         }
 
@@ -51,7 +64,7 @@
 
         /* Süre Çubuğu ve Sayacı */
         .timer-box {
-            background: rgba(0,0,0,0.3);
+            background: rgba(0,0,0,0.4);
             border-radius: 10px;
             padding: 8px 12px;
             margin-bottom: 15px;
@@ -120,9 +133,9 @@
         }
 
         .option-btn {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.12);
             color: white;
-            border: none;
+            border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 12px 20px;
             font-size: 1rem;
             border-radius: 10px;
@@ -133,7 +146,7 @@
             transition: 0.2s;
         }
 
-        .option-btn:hover { background: rgba(255, 255, 255, 0.2); }
+        .option-btn:hover { background: rgba(255, 255, 255, 0.25); }
         .option-btn.correct { background: #2ed573 !important; color: white; }
         .option-btn.wrong { background: #ff4757 !important; color: white; }
 
@@ -150,7 +163,7 @@
             padding: 10px;
             border-radius: 8px;
             border: 1px solid rgba(255,255,255,0.2);
-            background: rgba(0,0,0,0.2);
+            background: rgba(0,0,0,0.3);
             color: white;
             font-size: 1rem;
             text-align: center;
@@ -158,7 +171,7 @@
 
         .leaderboard {
             margin-top: 20px;
-            background: rgba(0, 0, 0, 0.2);
+            background: rgba(0, 0, 0, 0.3);
             border-radius: 10px;
             padding: 15px;
             text-align: left;
@@ -181,7 +194,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 8px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
             font-size: 0.95rem;
         }
 
@@ -224,7 +237,7 @@
         }
     </style>
 </head>
-<body>
+<body id="game-body">
     <div class="quiz-container">
         <!-- Giris Ekrani -->
         <div id="start-screen" class="screen">
@@ -327,8 +340,7 @@
         var anlikSoruPuan = 100;
         var isAdmin = false;
 
-        // Milisaniye Hassasiyetli Süre
-        const MKS_SURE_MS = 10000; // 10 saniye (10000ms)
+        const MKS_SURE_MS = 10000;
         var kalanSureMS = MKS_SURE_MS;
         var sureInterval = null;
 
@@ -341,6 +353,9 @@
             mevcutSoruIndex = 0;
             aktifSorular = karistir(tumSorular.slice());
 
+            // Oyun başladığında arka planı karart
+            document.getElementById("game-body").classList.add("quiz-active");
+
             document.getElementById("start-screen").classList.add("hidden");
             document.getElementById("end-screen").classList.add("hidden");
             document.getElementById("quiz-screen").classList.remove("hidden");
@@ -351,6 +366,10 @@
 
         function anaSayfayaDon() {
             clearInterval(sureInterval);
+
+            // Ana sayfaya dönünce karartmayı kaldır
+            document.getElementById("game-body").classList.remove("quiz-active");
+
             document.getElementById("quiz-screen").classList.add("hidden");
             document.getElementById("end-screen").classList.add("hidden");
             document.getElementById("start-screen").classList.remove("hidden");
@@ -362,11 +381,8 @@
             anlikSoruPuan = 100;
             zamanlayiciGuncelle();
 
-            // Her 20ms'de bir sayacı çalıştır (Milisaniye akıcılığı için)
             sureInterval = setInterval(function() {
                 kalanSureMS -= 20;
-
-                // Her 100ms geçen süre = 1 Puan düşüşü (10000ms / 100 puan = 100ms)
                 anlikSoruPuan = Math.max(0, Math.ceil(kalanSureMS / 100));
 
                 zamanlayiciGuncelle();
