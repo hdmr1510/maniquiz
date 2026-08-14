@@ -44,9 +44,42 @@
         .quiz-header {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             font-weight: bold;
             color: #00fff5;
+        }
+
+        /* Süre Çubuğu ve Sayacı */
+        .timer-box {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .timer-bar-bg {
+            flex-grow: 1;
+            height: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .timer-bar-fill {
+            height: 100%;
+            width: 100%;
+            background: #00fff5;
+            transition: width 1s linear, background-color 0.3s;
+        }
+
+        .timer-text {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #ff6b81;
+            min-width: 45px;
         }
 
         h2 { font-size: 1.2rem; margin-bottom: 25px; }
@@ -187,7 +220,7 @@
         <!-- Giris Ekrani -->
         <div id="start-screen" class="screen">
             <h1>Manifest Quiz</h1>
-            <p style="margin-bottom: 15px;">Ne kadar sıkı bir Manifest dinleyicisisin?</p>
+            <p style="margin-bottom: 15px;">Her soru için 10 saniyen var! Ne kadar hızlı olursan o kadar çok puan kazanırsın.</p>
             
             <button class="main-btn" onclick="oyunuBaslat()">Oyuna Başla</button>
 
@@ -218,6 +251,14 @@
                 <span id="question-number">Soru 1/5</span>
                 <span id="score-display">Puan: 0</span>
             </div>
+
+            <!-- Süre Göstergesi -->
+            <div class="timer-box">
+                <div class="timer-bar-bg">
+                    <div id="timer-bar" class="timer-bar-fill"></div>
+                </div>
+                <span id="timer-text" class="timer-text">10s</span>
+            </div>
             
             <h2 id="question-text">Soru metni</h2>
             
@@ -230,7 +271,7 @@
         <!-- Oyun Sonu Ekrani -->
         <div id="end-screen" class="screen hidden">
             <h1>Oyun Bitti!</h1>
-            <p id="final-score" style="margin-bottom: 10px;">Toplam Skorunuz: 0 / 50</p>
+            <p id="final-score" style="margin-bottom: 10px;">Toplam Skorunuz: 0 / 500</p>
             <p id="final-message" style="margin-bottom: 15px;"></p>
             
             <div id="save-score-box" class="input-group">
@@ -243,7 +284,7 @@
     </div>
 
     <script>
-        // Senin Ekranındaki Özel Firebase Bilgileri Entegre Edildi
+        // Firebase Konfigürasyonu
         const firebaseConfig = {
             apiKey: "AIzaSyAIS1MoQhLMwSNG4xkmLrSgwn_0eegmsfM",
             authDomain: "maniquiz.firebaseapp.com",
@@ -272,6 +313,11 @@
         var puan = 0;
         var isAdmin = false;
 
+        // Süre Ayarları (10 Saniye)
+        const MKS_SURE = 10; 
+        var kalanSure = MKS_SURE;
+        var sureInterval = null;
+
         function karistir(dizi) {
             return dizi.sort(function() { return 0.5 - Math.random(); });
         }
@@ -290,9 +336,43 @@
         }
 
         function anaSayfayaDon() {
+            clearInterval(sureInterval);
             document.getElementById("quiz-screen").classList.add("hidden");
             document.getElementById("end-screen").classList.add("hidden");
             document.getElementById("start-screen").classList.remove("hidden");
+        }
+
+        function zamanlayiciBaslat() {
+            clearInterval(sureInterval);
+            kalanSure = MKS_SURE;
+            zamanlayiciGuncelle();
+
+            sureInterval = setInterval(function() {
+                kalanSure--;
+                zamanlayiciGuncelle();
+
+                if (kalanSure <= 0) {
+                    clearInterval(sureInterval);
+                    sureBittiCevapla();
+                }
+            }, 1000);
+        }
+
+        function zamanlayiciGuncelle() {
+            var bar = document.getElementById("timer-bar");
+            var text = document.getElementById("timer-text");
+            var yuzde = (kalanSure / MKS_SURE) * 100;
+
+            bar.style.width = yuzde + "%";
+            text.innerText = kalanSure + "s";
+
+            if (kalanSure <= 3) {
+                bar.style.backgroundColor = "#ff4757";
+            } else if (kalanSure <= 6) {
+                bar.style.backgroundColor = "#ffa502";
+            } else {
+                bar.style.backgroundColor = "#00fff5";
+            }
         }
 
         function soruyuGoster() {
@@ -316,9 +396,12 @@
                     optionsContainer.appendChild(btn);
                 })(i);
             }
+
+            zamanlayiciBaslat();
         }
 
         function cevabiKontrolEt(secilenIndex, secilenBtn) {
+            clearInterval(sureInterval);
             var soru = aktifSorular[mevcutSoruIndex];
             var tumButonlar = document.querySelectorAll(".option-btn");
             for (var i = 0; i < tumButonlar.length; i++) tumButonlar[i].disabled = true;
@@ -328,8 +411,13 @@
 
             if (secilenIndex === soru.dogrusik) {
                 secilenBtn.classList.add("correct");
-                puan += 10;
-                feedback.innerText = "TEBRİKLER! Doğru Cevap!";
+                
+                // Hızlı cevaplama puanı (Saniye x 10) -> Maksimum 100 Puan
+                var kazanilanPuan = Math.min(kalanSure * 10, 100); 
+                if (kazanilanPuan < 10) kazanilanPuan = 10; // En az 10 puan ver
+                
+                puan += kazanilanPuan;
+                feedback.innerText = "TEBRİKLER! Doğru Cevap! (+" + kazanilanPuan + " Puan)";
                 feedback.style.color = "#2ed573";
             } else {
                 secilenBtn.classList.add("wrong");
@@ -342,6 +430,21 @@
             document.getElementById("next-btn").classList.remove("hidden");
         }
 
+        function sureBittiCevapla() {
+            var soru = aktifSorular[mevcutSoruIndex];
+            var tumButonlar = document.querySelectorAll(".option-btn");
+            for (var i = 0; i < tumButonlar.length; i++) tumButonlar[i].disabled = true;
+
+            tumButonlar[soru.dogrusik].classList.add("correct");
+
+            var feedback = document.getElementById("feedback");
+            feedback.classList.remove("hidden");
+            feedback.innerText = "⏰ Süre Bitti! Doğru cevap gösterildi.";
+            feedback.style.color = "#ff4757";
+
+            document.getElementById("next-btn").classList.remove("hidden");
+        }
+
         function sonrakiSoru() {
             mevcutSoruIndex++;
             if (mevcutSoruIndex < aktifSorular.length) soruyuGoster();
@@ -349,15 +452,16 @@
         }
 
         function oyunuBitir() {
+            clearInterval(sureInterval);
             document.getElementById("quiz-screen").classList.add("hidden");
             document.getElementById("end-screen").classList.remove("hidden");
             
-            var maxPuan = aktifSorular.length * 10;
+            var maxPuan = aktifSorular.length * 100;
             document.getElementById("final-score").innerText = "Toplam Skorunuz: " + puan + " / " + maxPuan;
 
             var mesaj = document.getElementById("final-message");
-            if (puan === maxPuan) mesaj.innerText = "Koyu bir Manifest hayranısın! Bütün soruları bildin 🔥";
-            else if (puan >= maxPuan / 2) mesaj.innerText = "Fena değil! Birkaç tekrarla tam puan alırsın 🎧";
+            if (puan >= 400) mesaj.innerText = "İnanılmaz hızlısın! Koyu bir Manifest hayranısın 🔥";
+            else if (puan >= 200) mesaj.innerText = "Fena değil! Hızını artırırsan liderliğe oynarsın 🎧";
             else mesaj.innerText = "Görünen o ki biraz daha Manifest dinlemelisin 😅";
         }
 
