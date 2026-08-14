@@ -53,18 +53,18 @@
         .timer-box {
             background: rgba(0,0,0,0.3);
             border-radius: 10px;
-            padding: 8px;
+            padding: 8px 12px;
             margin-bottom: 15px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
         }
 
         .timer-bar-bg {
             flex-grow: 1;
-            height: 10px;
+            height: 12px;
             background: rgba(255,255,255,0.1);
-            border-radius: 5px;
+            border-radius: 6px;
             overflow: hidden;
         }
 
@@ -72,14 +72,23 @@
             height: 100%;
             width: 100%;
             background: #00fff5;
-            transition: width 1s linear, background-color 0.3s;
+            transition: background-color 0.3s;
         }
 
         .timer-text {
             font-weight: bold;
-            font-size: 1.1rem;
+            font-size: 1rem;
             color: #ff6b81;
-            min-width: 45px;
+            min-width: 55px;
+            text-align: right;
+            font-family: monospace;
+        }
+
+        .question-score-pool {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #ffda79;
+            margin-bottom: 15px;
         }
 
         h2 { font-size: 1.2rem; margin-bottom: 25px; }
@@ -220,7 +229,7 @@
         <!-- Giris Ekrani -->
         <div id="start-screen" class="screen">
             <h1>Manifest Quiz</h1>
-            <p style="margin-bottom: 15px;">Her soru için 10 saniyen var! Ne kadar hızlı olursan o kadar çok puan kazanırsın.</p>
+            <p style="margin-bottom: 15px;">Her soru 100 puanla başlar ve süre aktıkça puan düşer! Hızlı olan kazanır.</p>
             
             <button class="main-btn" onclick="oyunuBaslat()">Oyuna Başla</button>
 
@@ -249,7 +258,7 @@
         <div id="quiz-screen" class="screen hidden">
             <div class="quiz-header">
                 <span id="question-number">Soru 1/5</span>
-                <span id="score-display">Puan: 0</span>
+                <span id="score-display">Toplam Puan: 0</span>
             </div>
 
             <!-- Süre Göstergesi -->
@@ -257,7 +266,11 @@
                 <div class="timer-bar-bg">
                     <div id="timer-bar" class="timer-bar-fill"></div>
                 </div>
-                <span id="timer-text" class="timer-text">10s</span>
+                <span id="timer-text" class="timer-text">10.00s</span>
+            </div>
+
+            <div class="question-score-pool">
+                ⚡ Bu Sorudan Kazanılabilecek Puan: <span id="current-question-score" style="color:#00fff5;">100</span>
             </div>
             
             <h2 id="question-text">Soru metni</h2>
@@ -310,12 +323,13 @@
 
         var aktifSorular = [];
         var mevcutSoruIndex = 0;
-        var puan = 0;
+        var toplamPuan = 0;
+        var anlikSoruPuan = 100;
         var isAdmin = false;
 
-        // Süre Ayarları (10 Saniye)
-        const MKS_SURE = 10; 
-        var kalanSure = MKS_SURE;
+        // Milisaniye Hassasiyetli Süre
+        const MKS_SURE_MS = 10000; // 10 saniye (10000ms)
+        var kalanSureMS = MKS_SURE_MS;
         var sureInterval = null;
 
         function karistir(dizi) {
@@ -323,7 +337,7 @@
         }
 
         function oyunuBaslat() {
-            puan = 0;
+            toplamPuan = 0;
             mevcutSoruIndex = 0;
             aktifSorular = karistir(tumSorular.slice());
 
@@ -344,31 +358,41 @@
 
         function zamanlayiciBaslat() {
             clearInterval(sureInterval);
-            kalanSure = MKS_SURE;
+            kalanSureMS = MKS_SURE_MS;
+            anlikSoruPuan = 100;
             zamanlayiciGuncelle();
 
+            // Her 20ms'de bir sayacı çalıştır (Milisaniye akıcılığı için)
             sureInterval = setInterval(function() {
-                kalanSure--;
+                kalanSureMS -= 20;
+
+                // Her 100ms geçen süre = 1 Puan düşüşü (10000ms / 100 puan = 100ms)
+                anlikSoruPuan = Math.max(0, Math.ceil(kalanSureMS / 100));
+
                 zamanlayiciGuncelle();
 
-                if (kalanSure <= 0) {
+                if (kalanSureMS <= 0) {
                     clearInterval(sureInterval);
                     sureBittiCevapla();
                 }
-            }, 1000);
+            }, 20);
         }
 
         function zamanlayiciGuncelle() {
             var bar = document.getElementById("timer-bar");
             var text = document.getElementById("timer-text");
-            var yuzde = (kalanSure / MKS_SURE) * 100;
+            var scoreSpan = document.getElementById("current-question-score");
 
-            bar.style.width = yuzde + "%";
-            text.innerText = kalanSure + "s";
+            var yuzde = (kalanSureMS / MKS_SURE_MS) * 100;
+            bar.style.width = Math.max(0, yuzde) + "%";
 
-            if (kalanSure <= 3) {
+            var saniyeStr = (Math.max(0, kalanSureMS) / 1000).toFixed(2);
+            text.innerText = saniyeStr + "s";
+            scoreSpan.innerText = anlikSoruPuan;
+
+            if (kalanSureMS <= 3000) {
                 bar.style.backgroundColor = "#ff4757";
-            } else if (kalanSure <= 6) {
+            } else if (kalanSureMS <= 6000) {
                 bar.style.backgroundColor = "#ffa502";
             } else {
                 bar.style.backgroundColor = "#00fff5";
@@ -378,7 +402,7 @@
         function soruyuGoster() {
             var soru = aktifSorular[mevcutSoruIndex];
             document.getElementById("question-number").innerText = "Soru " + (mevcutSoruIndex + 1) + "/" + aktifSorular.length;
-            document.getElementById("score-display").innerText = "Puan: " + puan;
+            document.getElementById("score-display").innerText = "Toplam Puan: " + toplamPuan;
             document.getElementById("question-text").innerText = soru.metin;
 
             var optionsContainer = document.getElementById("options-container");
@@ -411,13 +435,8 @@
 
             if (secilenIndex === soru.dogrusik) {
                 secilenBtn.classList.add("correct");
-                
-                // Hızlı cevaplama puanı (Saniye x 10) -> Maksimum 100 Puan
-                var kazanilanPuan = Math.min(kalanSure * 10, 100); 
-                if (kazanilanPuan < 10) kazanilanPuan = 10; // En az 10 puan ver
-                
-                puan += kazanilanPuan;
-                feedback.innerText = "TEBRİKLER! Doğru Cevap! (+" + kazanilanPuan + " Puan)";
+                toplamPuan += anlikSoruPuan;
+                feedback.innerText = "TEBRİKLER! Doğru Cevap! (+" + anlikSoruPuan + " Puan)";
                 feedback.style.color = "#2ed573";
             } else {
                 secilenBtn.classList.add("wrong");
@@ -426,7 +445,7 @@
                 feedback.style.color = "#ff4757";
             }
 
-            document.getElementById("score-display").innerText = "Puan: " + puan;
+            document.getElementById("score-display").innerText = "Toplam Puan: " + toplamPuan;
             document.getElementById("next-btn").classList.remove("hidden");
         }
 
@@ -457,11 +476,11 @@
             document.getElementById("end-screen").classList.remove("hidden");
             
             var maxPuan = aktifSorular.length * 100;
-            document.getElementById("final-score").innerText = "Toplam Skorunuz: " + puan + " / " + maxPuan;
+            document.getElementById("final-score").innerText = "Toplam Skorunuz: " + toplamPuan + " / " + maxPuan;
 
             var mesaj = document.getElementById("final-message");
-            if (puan >= 400) mesaj.innerText = "İnanılmaz hızlısın! Koyu bir Manifest hayranısın 🔥";
-            else if (puan >= 200) mesaj.innerText = "Fena değil! Hızını artırırsan liderliğe oynarsın 🎧";
+            if (toplamPuan >= 400) mesaj.innerText = "İnanılmaz hızlısın! Koyu bir Manifest hayranısın 🔥";
+            else if (toplamPuan >= 200) mesaj.innerText = "Fena değil! Hızını artırırsan liderliğe oynarsın 🎧";
             else mesaj.innerText = "Görünen o ki biraz daha Manifest dinlemelisin 😅";
         }
 
@@ -533,7 +552,7 @@
 
             db.ref("skorlar").push({
                 isim: isim,
-                puan: puan
+                puan: toplamPuan
             }).then(() => {
                 document.getElementById("save-score-box").classList.add("hidden");
                 alert("Skorunuz kaydedildi!");
